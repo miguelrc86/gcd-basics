@@ -73,19 +73,21 @@ final class PhotoManager {
     func downloadPhotos(withCompletion completion: BatchPhotoDownloadingCompletionClosure?) {
         var storedError: NSError?
         let downloadGroup = DispatchGroup()
+        let addresses = [PhotoURLString.overlyAttachedGirlfriend,
+                         PhotoURLString.successKid,
+                         PhotoURLString.lotsOfFaces]
         
-        for address in [PhotoURLString.overlyAttachedGirlfriend,
-                        PhotoURLString.successKid,
-                        PhotoURLString.lotsOfFaces] {
-                            let url = URL(string: address)
-                            downloadGroup.enter()
-                            let photo = DownloadPhoto(url: url!) { _, error in
-                                if error != nil {
-                                    storedError = error
-                                }
-                                downloadGroup.leave()
-                            }
-                            PhotoManager.shared.addPhoto(photo)
+        let _ = DispatchQueue.global(qos: .userInitiated) // Calling this causes GCD to use a queue with a .userInitiated quality of service for the concurrent calls
+        DispatchQueue.concurrentPerform(iterations: addresses.count) { index in
+            let url = URL(string: addresses[index])
+            downloadGroup.enter()
+            let photo = DownloadPhoto(url: url!) { _, error in
+                if error != nil {
+                    storedError = error
+                }
+                downloadGroup.leave()
+            }
+            PhotoManager.shared.addPhoto(photo)
         }
         
         downloadGroup.notify(queue: DispatchQueue.main) {
